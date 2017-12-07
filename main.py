@@ -23,7 +23,7 @@ headerText = 'my compressed image - v1.0'
 # Compress an image
 
 def initializeDictionary(dict_size) :
-  d = dict((str(i), i) for i in xrange(dict_size))
+  d = dict((chr(i), i) for i in xrange(dict_size))
   return d
 
 def getfirstbyte(v) :
@@ -74,19 +74,19 @@ def compress( inputFile, outputFile ):
         if(x > 0):
             fp = img[y,x-1,c]
         e = img[y,x,c] - fp
-        f.write(str(e))
-        if(s + str(e) in d):
-            s += str(e)
+        #f.write(str(e))
+        if(s + chr(e) in d):
+            s += chr(e)
         else:
             #f.write(' s = ' + s + ' d[s]= ' + str(d[s]))
             outputBytes.append(getfirstbyte(d[s]))
             outputBytes.append(getsecondbyte(d[s]))
-            d[s + str(e)] = dict_size
+            d[s + chr(e)] = dict_size
             dict_size += 1
             if(dict_size > maxsize):
                 dict_size = 256
                 d = initializeDictionary(dict_size)
-            s = str(e)
+            s = chr(e)
   outputBytes.append(getfirstbyte(d[s]))
   outputBytes.append(getsecondbyte(d[s]))
   endTime = time.time()
@@ -117,7 +117,28 @@ def compress( inputFile, outputFile ):
 def getnextcode( byteIter ) :
     fb = byteIter.next()
     sb = byteIter.next()
-    return (int(fb) << 8) | sb
+    #return (int(fb) << 8) | sb
+    if(fb != 0):
+        return chr(fb) + chr(sb)
+    return chr(sb)
+    
+def convertchar2num( s ):
+    if(len(s) > 1) :
+        fc = s[0]
+        sc = s[1]
+        if(ord(fc) != 0):
+            return ord(fc)*256 + ord(sc)
+    
+    return ord(s)
+    
+def convertnum2char( n ):
+    s = ""
+    fc = getfirstbyte( n )
+    sc = getsecondbyte( n )
+    if(fc != 0):
+        s += chr(fc)
+    s += chr(sc)
+    return s
 
 # Uncompress an image
 
@@ -173,27 +194,27 @@ def uncompress( inputFile, outputFile ):
     # oldcode = newcode
 
   while(True):
-        k = getnextcode(byteIter)  
+        k = getnextcode(byteIter) # this is string
         #f.write(str(k))
-        if( k > dict_size ) :
-          return
-        if ( k == dict_size ) : # special case
-          d[str(dict_size)] = s + s[:3]
-          dict_size += 1
-        elif ( s != "") :
-          d[str(dict_size)] = s + str(d[str(k)])[:3]
-          dict_size += 1
+        #print(k)
+        #if( convertchar2num(k) > dict_size ) :
+        #  return
+        #if ( k == convertnum2char(dict_size) ) : # special case
+        #  d[convertnum2char(dict_size)] = convertchar2num(s + s[0])
+        #  dict_size += 1
+        #elif ( s != "") :
+        #  d[convertnum2char(dict_size)] = convertchar2num(s + convertnum2char(d[k])[0])
+        #  dict_size += 1
 
         # write dictionary[k] to DF
-        sq = str(d[str(k)])
-        for c in [sq[i:i+3] for i in range(0, len(sq), 3)]:
-            f.write(c + '\n')
+        #sq = str(d[k])
+        #f.write(sq + '\n')
         #f.write(' s = ' + s + ' k=' + str(k) + ' d[k] = ' + str(d[str(k)]))
         # S = dictionary[k]
-        s = str(d[str(k)])
-        if(dict_size > maxsize):
-          dict_size = 256
-          d = initializeDictionary(dict_size)
+        #s = convertnum2char(d[k])
+        #if(dict_size > maxsize):
+        #  dict_size = 256
+        #  d = initializeDictionary(dict_size)
  
   # for y in range(rows):
     # for x in range(columns):
