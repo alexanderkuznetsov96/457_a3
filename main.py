@@ -20,8 +20,6 @@ import numpy as np
 
 headerText = 'my compressed image - v1.0'
 
-
-
 # Compress an image
 
 
@@ -55,8 +53,12 @@ def compress( inputFile, outputFile ):
   for y in range(img.shape[0]):
     for x in range(img.shape[1]):
       for c in range(img.shape[2]):
-        outputBytes.append( img[y,x,c] )
-
+        fp = 0;
+        if(x > 0) :
+            fp = img[y,x-1,c]
+        e = img[y,x,c] - fp
+        outputBytes.append( e )
+    
   endTime = time.time()
 
   # Output the bytes
@@ -78,8 +80,6 @@ def compress( inputFile, outputFile ):
   sys.stderr.write( 'Output size:        %d bytes\n' % outSize )
   sys.stderr.write( 'Compression factor: %.2f\n' % (inSize/float(outSize)) )
   sys.stderr.write( 'Compression time:   %.2f seconds\n' % (endTime - startTime) )
-  
-
 
 # Uncompress an image
 
@@ -111,7 +111,11 @@ def uncompress( inputFile, outputFile ):
   for y in range(rows):
     for x in range(columns):
       for c in range(channels):
-        img[y,x,c] = byteIter.next()
+        e = byteIter.next()
+        fp = 0;
+        if(x > 0) :
+            fp = img[y,x-1,c]
+        img[y,x,c] = fp + e
 
   endTime = time.time()
 
@@ -142,7 +146,7 @@ if sys.argv[2] == '-':
   inputFile = sys.stdin
 else:
   try:
-    inputFile = open( sys.argv[2], 'r' )
+    inputFile = open( sys.argv[2], 'rb' )
   except:
     sys.stderr.write( "Could not open input file '%s'.\n" % sys.argv[2] )
     sys.exit(1)
@@ -153,7 +157,7 @@ if sys.argv[3] == '-':
   outputFile = sys.stdout
 else:
   try:
-    outputFile = open( sys.argv[3], 'w' )
+    outputFile = open( sys.argv[3], 'wb' )
   except:
     sys.stderr.write( "Could not open output file '%s'.\n" % sys.argv[3] )
     sys.exit(1)
