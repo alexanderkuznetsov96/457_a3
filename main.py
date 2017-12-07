@@ -22,7 +22,18 @@ headerText = 'my compressed image - v1.0'
 
 # Compress an image
 
+def initializeDictionary(i) :
+  d = {}
+  for k in range(i) :
+    d[str(k)] = k
+  return d
 
+def getfirstbyte(v) :
+    return (v & (0xFF << 8)) >> 8
+    
+def getsecondbyte(v) :
+    return v & 0xFF
+    
 def compress( inputFile, outputFile ):
 
   # Read the input file into a numpy array of 8-bit values
@@ -49,18 +60,42 @@ def compress( inputFile, outputFile ):
   startTime = time.time()
  
   outputBytes = bytearray()
-
+  
+  # Initialize dictionary
+  maxsize = 65536
+  i = 256
+  d = initializeDictionary(i)
+  s = ''
+  
+  # For debugging
+  f = open('debug_encoding.txt', 'w')
+  
   for y in range(img.shape[0]):
     for x in range(img.shape[1]):
       for c in range(img.shape[2]):
         fp = 0;
-        if(x > 0) :
+        if(x > 0):
             fp = img[y,x-1,c]
         e = img[y,x,c] - fp
-        outputBytes.append( e )
-    
+        #f.write(str(e))
+        if(s + str(e) in d):
+            s += str(e)
+        else:
+            #f.write(str(d[s]))
+            outputBytes.append(getfirstbyte(d[s]))
+            outputBytes.append(getsecondbyte(d[s]))
+            d[s + str(e)] = i
+            i += 1
+            if(i > maxsize):
+                i = 256
+                d = initializeDictionary(i)
+            s = str(e)
+  outputBytes.append(getfirstbyte(d[s]))
+  outputBytes.append(getsecondbyte(d[s]))
   endTime = time.time()
 
+  f.close()
+  
   # Output the bytes
   #
   # Include the 'headerText' to identify the type of file.  Include
@@ -80,6 +115,13 @@ def compress( inputFile, outputFile ):
   sys.stderr.write( 'Output size:        %d bytes\n' % outSize )
   sys.stderr.write( 'Compression factor: %.2f\n' % (inSize/float(outSize)) )
   sys.stderr.write( 'Compression time:   %.2f seconds\n' % (endTime - startTime) )
+
+# Get next code
+
+def getnextcode( byteIter ) :
+    fb = byteIter.next()
+    sb = byteIter.next()
+    return (int(fb) << 8) | sb
 
 # Uncompress an image
 
@@ -106,19 +148,61 @@ def uncompress( inputFile, outputFile ):
   startTime = time.time()
 
   img = np.empty( [rows,columns,channels], dtype=np.uint8 )
-
+  
   byteIter = iter(inputBytes)
-  for y in range(rows):
-    for x in range(columns):
-      for c in range(channels):
-        e = byteIter.next()
-        fp = 0;
-        if(x > 0) :
-            fp = img[y,x-1,c]
-        img[y,x,c] = fp + e
+   
+  # For debugging
+  f = open('debug_decoding.txt', 'w')
+  
+  # Initialize dictionary
+  maxsize = 65536
+  i = 256
+  d = initializeDictionary(i)
+  
+  oldcode = str(getnextcode(byteIter))
+  f.write(oldcode)
+  ch = oldcode
+  while(True):
+    newcode = str(getnextcode(byteIter))
+    if(newcode not in d):
+        s = str(d[oldcode])
+        s += ch
+    else :
+        s = str(d[newcode])
+    f.write(s)
+    ch = s[0]
+    d[oldcode + ch] = i
+    i += 1
+    oldcode = newcode
+ 
+  # for y in range(rows):
+    # for x in range(columns):
+      # for c in range(channels):
+        # k = getnextcode(byteIter)  
+        # #f.write(str(k))
+        # if( k > i ) :
+          # return
+        # if ( k == i ) : # special case
+          # d[str(i)] = s + s[0]
+          # i += 1
+        # elif ( s != "") :
+          # d[str(i)] = s + str(d[str(k)])[0]
+          # i += 1
+
+        # # write dictionary[k] to DF
+        # f.write(str(d[str(k)]))
+        # # S = dictionary[k]
+        # s = str(d[str(k)])
+        # if(i > maxsize):
+          # i = 256
+          # d = initializeDictionary(i)
+        #fp = 0;
+        #if(x > 0) :
+        #    fp = img[y,x-1,c]
+        #img[y,x,c] = fp + e
 
   endTime = time.time()
-
+  f.close()
   # Output the image
 
   netpbm.imsave( outputFile, img )
