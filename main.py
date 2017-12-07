@@ -23,7 +23,7 @@ headerText = 'my compressed image - v1.0'
 # Compress an image
 
 def initializeDictionary(dict_size) :
-  d = dict((chr(i), i) for i in xrange(dict_size))
+  d = dict((chr(i), chr(i)) for i in xrange(dict_size))
   return d
 
 def getfirstbyte(v) :
@@ -81,7 +81,7 @@ def compress( inputFile, outputFile ):
             #f.write(' s = ' + s + ' d[s]= ' + str(d[s]))
             outputBytes.append(getfirstbyte(d[s]))
             outputBytes.append(getsecondbyte(d[s]))
-            d[s + chr(e)] = dict_size
+            d[s + chr(e)] = convertnum2char(dict_size)
             dict_size += 1
             if(dict_size > maxsize):
                 dict_size = 256
@@ -170,33 +170,30 @@ def uncompress( inputFile, outputFile ):
    
   # For debugging
   f = open('debug_decoding.txt', 'w')
+  kf = open('codes.txt', 'w')
   
   # Initialize dictionary
   maxsize = 65536
   dict_size = 256
   d = initializeDictionary(dict_size)
   s = ''
-  
-  # oldcode = str(getnextcode(byteIter))
-  # f.write(oldcode)
-  # ch = oldcode
-  # while(True):
-    # newcode = str(getnextcode(byteIter))
-    # if(newcode not in d):
-        # s = str(d[oldcode])
-        # s += ch
-    # else :
-        # s = str(d[newcode])
-    # f.write(s)
-    # ch = s[0]
-    # d[oldcode + ch] = str(dict_size)
-    # dict_size += 1
-    # oldcode = newcode
 
   while(True):
         k = getnextcode(byteIter) # this is string
-        #f.write(str(k))
+        kf.write(str(convertchar2num(k)) + '\n')
         #print(k)
+        if( convertchar2num(k) == dict_size):
+            d[convertnum2char(dict_size)] = s + s[0]
+            dict_size += 1
+        elif(len(s) > 0):
+            d[convertnum2char(dict_size)] = s + d[k][0]
+            dict_size += 1
+        for c in d[k]:
+            f.write(str(ord(c)) + '\n')
+        s = d[k]
+        if(dict_size > maxsize):
+            dict_size = 256
+            d = initializeDictionary(dict_size)
         #if( convertchar2num(k) > dict_size ) :
         #  return
         #if ( k == convertnum2char(dict_size) ) : # special case
