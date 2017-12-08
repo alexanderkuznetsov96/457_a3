@@ -181,34 +181,43 @@ def uncompress( inputFile, outputFile ):
   dict_size = 256
   d = initializeDictionary(dict_size)
   s = ''
- 
-  for y in range(rows):
-    for x in range(columns):
-      for c in range(channels):
-        k = getnextcode(byteIter) # this is string
-        kf.write(str(convertchar2num(k)) + '\n')
-        #print(k)
-        if( convertchar2num(k) == dict_size):
-            d[convertnum2char(dict_size)] = s + s[0]
-            dict_size += 1
-        elif(len(s) > 0):
-            d[convertnum2char(dict_size)] = s + d[k][0]
-            dict_size += 1
-        for q in d[k]:
-            f.write(str(ord(q)) + '\n')
-            e = ord(q)
-            fp = 0;
-            if(x > 0) :
-                fp = img[y,x-1,c]
-            img[y,x,c] = fp + e
-        s = d[k]
-        if(dict_size > maxsize):
-            dict_size = 256
-            d = initializeDictionary(dict_size)
+  e = []
+  while(True):
+    try:
+        k = getnextcode(byteIter) # this is 
+    except StopIteration:
+        break
+    kf.write(str(convertchar2num(k)) + '\n')
+    #print(k)
+    if( convertchar2num(k) == dict_size):
+        d[convertnum2char(dict_size)] = s + s[0]
+        dict_size += 1
+    elif(len(s) > 0):
+        d[convertnum2char(dict_size)] = s + d[k][0]
+        dict_size += 1
+    for q in d[k]:
+        e.append(ord(q))
+        #f.write(str(ord(q)) + '\n')
+        #e = ord(q)
         #fp = 0;
         #if(x > 0) :
         #    fp = img[y,x-1,c]
         #img[y,x,c] = fp + e
+    s = d[k]
+    if(dict_size > maxsize):
+        dict_size = 256
+        d = initializeDictionary(dict_size)
+ 
+  #print(e)
+  i = 0
+  for y in range(rows):
+    for x in range(columns):
+      for c in range(channels):
+        fp = 0;
+        if(x > 0) :
+           fp = img[y,x-1,c]
+        img[y,x,c] = fp + e[i]
+        i += 1
 
   endTime = time.time()
   f.close()
