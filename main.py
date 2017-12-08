@@ -51,7 +51,7 @@ def getprediction(img, x, y, c, isMultiChannel):
     #        f01 = img[y-1,x,c]
     #    else:
     #        f01 = img[y-1,x]
-           
+
     #r = np.uint8(f10/3 + f11/3 + f01/3)
     #r = np.uint8(f10/2 + f01/2)
     r = f10
@@ -89,21 +89,27 @@ def compress( inputFile, outputFile ):
   dict_size = 256
   d = initializeDictionary(dict_size)
   s = ''
-
+  img_dimensions = len(img.shape)
+  if(img_dimensions > 2):
+      channels = img.shape[2]
+      one_channel_flag = False
+  else:
+      channels = 1
+      one_channel_flag = True
   for y in range(img.shape[0]):
     for x in range(img.shape[1]):
-      for c in range(img.shape[2]):
+      for c in range(channels):
         fp = 0
-        if(len(img.shape) > 2):
+        if(one_channel_flag):
             #fp = getprediction(img,x,y,c,True)
-            if(x > 0):
-                fp = img[y,x-1,c]
-            e = img[y,x,c] - fp
-        else:
-            #fp = getprediction(img,x,y,0,False)
             if(x > 0):
                 fp = img[y,x-1]
             e = img[y,x] - fp
+        else:
+            #fp = getprediction(img,x,y,0,False)
+            if(x > 0):
+                fp = img[y,x-1,c]
+            e = img[y,x,c] - fp
         if(s + chr(e) in d):
             s += chr(e)
         else:
@@ -197,6 +203,10 @@ def uncompress( inputFile, outputFile ):
   columns = img_dims[1]
   if(len(img_dims) > 2):
       channels = img_dims[2]
+      one_channel_flag = False
+  else:
+      channels = 1
+      one_channel_flag = True
 
   # Read the raw bytes.
 
@@ -245,20 +255,22 @@ def uncompress( inputFile, outputFile ):
         d = initializeDictionary(dict_size)
 
   i = 0
+
+
   for y in range(rows):
     for x in range(columns):
       for c in range(channels):
         fp = 0
-        if(len(img_dims) > 2):
+        if one_channel_flag:
             #fp = getprediction(img,x,y,c,True)
-            if(x > 0):
-                fp = img[y,x-1,c]
-            img[y,x,c] = fp + e[i]
-        else:
-            #fp = getprediction(img,x,y,0,False)
             if(x > 0):
                 fp = img[y,x-1]
             img[y,x] = fp + e[i]
+        else:
+            #fp = getprediction(img,x,y,0,False)
+            if(x > 0):
+                fp = img[y,x-1,c]
+            img[y,x,c] = fp + e[i]
         i += 1
 
   endTime = time.time()
