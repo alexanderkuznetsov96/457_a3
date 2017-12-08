@@ -28,10 +28,10 @@ def initializeDictionary(dict_size) :
 
 def getfirstbyte(v) :
     return (v & (0xFF << 8)) >> 8
-    
+
 def getsecondbyte(v) :
     return v & 0xFF
-    
+
 def compress( inputFile, outputFile ):
 
   # Read the input file into a numpy array of 8-bit values
@@ -42,7 +42,7 @@ def compress( inputFile, outputFile ):
   # integer.
 
   img = netpbm.imread( inputFile ).astype('uint8')
-  
+
   # Compress the image
   #
   # REPLACE THIS WITH YOUR OWN CODE TO FILL THE 'outputBytes' ARRAY.
@@ -56,9 +56,9 @@ def compress( inputFile, outputFile ):
   # multi-channel case.
 
   startTime = time.time()
- 
+
   outputBytes = bytearray()
-  
+
   # Initialize dictionary
   maxsize = 65536
   dict_size = 256
@@ -67,14 +67,14 @@ def compress( inputFile, outputFile ):
   # For debugging
   f = open('debug_encoding.txt', 'w')
   fd = open('debug_codes.txt', 'w')
-  
-  for y in range(img.shape[0]):
-    for x in range(img.shape[1]):
-      for c in range(img.shape[2]):
+
+  if(len(img.shape) < 3):
+    for y in range(img.shape[0]):
+      for x in range(img.shape[1]):
         fp = 0;
         if(x > 0):
-            fp = img[y,x-1,c]
-        e = img[y,x,c] - fp
+            fp = img[y,x-1]
+        e = img[y,x] - fp
         f.write(str(e))
         if(s + chr(e) in d):
             s += chr(e)
@@ -83,19 +83,43 @@ def compress( inputFile, outputFile ):
             sq = convertchar2num(d[s])
             fd.write(str(sq) + '\n')
             outputBytes.append(getfirstbyte(sq))
-            outputBytes.append(getsecondbyte(sq))   
+            outputBytes.append(getsecondbyte(sq))
             d[s + chr(e)] = convertnum2char(dict_size)
             dict_size += 1
             if(dict_size > maxsize):
                 dict_size = 256
                 d = initializeDictionary(dict_size)
             s = chr(e)
+  else:
+      for y in range(img.shape[0]):
+        for x in range(img.shape[1]):
+          for c in range(img.shape[2]):
+            fp = 0;
+            if(x > 0):
+                fp = img[y,x-1,c]
+            e = img[y,x,c] - fp
+            f.write(str(e))
+            if(s + chr(e) in d):
+                s += chr(e)
+            else:
+                #f.write(' s = ' + s + ' d[s]= ' + str(d[s]))
+                sq = convertchar2num(d[s])
+                fd.write(str(sq) + '\n')
+                outputBytes.append(getfirstbyte(sq))
+                outputBytes.append(getsecondbyte(sq))
+                d[s + chr(e)] = convertnum2char(dict_size)
+                dict_size += 1
+                if(dict_size > maxsize):
+                    dict_size = 256
+                    d = initializeDictionary(dict_size)
+                s = chr(e)
+
   sq = convertchar2num(d[s])
   outputBytes.append(getfirstbyte(sq))
-  outputBytes.append(getsecondbyte(sq))    
+  outputBytes.append(getsecondbyte(sq))
   endTime = time.time()
   f.close()
-  
+
   # Output the bytes
   #
   # Include the 'headerText' to identify the type of file.  Include
@@ -103,12 +127,19 @@ def compress( inputFile, outputFile ):
   # reconstructed.
 
   outputFile.write( '%s\n'       % headerText )
-  outputFile.write( '%d %d %d\n' % (img.shape[0], img.shape[1], img.shape[2]) )
+  if len(img.shape) > 2:
+      outputFile.write( '%d %d %d\n' % (img.shape[0], img.shape[1], img.shape[2]) )
+  else:
+      outputFile.write( '%d %d\n' % (img.shape[0], img.shape[1]))
   outputFile.write( outputBytes )
 
   # Print information about the compression
-  
-  inSize  = img.shape[0] * img.shape[1] * img.shape[2]
+
+  if len(img.shape) > 2:
+      inSize  = img.shape[0] * img.shape[1] * img.shape[2]
+  else:
+      inSize = img.shape[0]*img.shape[1]
+
   outSize = len(outputBytes)
 
   sys.stderr.write( 'Input size:         %d bytes\n' % inSize )
@@ -125,16 +156,16 @@ def getnextcode( byteIter ) :
     if(fb != 0):
         return chr(fb) + chr(sb)
     return chr(sb)
-    
+
 def convertchar2num( s ):
     if(len(s) > 1) :
         fc = s[0]
         sc = s[1]
         if(ord(fc) != 0):
             return ord(fc)*256 + ord(sc)
-    
+
     return ord(s)
-    
+
 def convertnum2char( n ):
     s = ""
     fc = getfirstbyte( n )
@@ -153,10 +184,13 @@ def uncompress( inputFile, outputFile ):
   if inputFile.readline() != headerText + '\n':
     sys.stderr.write( "Input is not in the '%s' format.\n" % headerText )
     sys.exit(1)
-    
-  # Read the rows, columns, and channels.  
 
-  rows, columns, channels = [ int(x) for x in inputFile.readline().split() ]
+  # Read the rows, columns, and channels.
+  img_dims = [ int(x) for x in inputFile.readline().split() ]
+  rows = img_dims[0]
+  columns = img_dims[1]
+  if(len(img_dims) > 2):
+      channels = img_dims[2]
 
   # Read the raw bytes.
 
@@ -168,14 +202,16 @@ def uncompress( inputFile, outputFile ):
 
   startTime = time.time()
 
-  img = np.empty( [rows,columns,channels], dtype=np.uint8 )
-  
+  if len(img_dims) > 2:
+      img = np.empty( [rows,columns,channels], dtype=np.uint8 )
+  else:
+      img = np.empty([rows, columns], dtype=np.uint8)
   byteIter = iter(inputBytes)
-   
+
   # For debugging
   f = open('debug_decoding.txt', 'w')
   kf = open('output_codes.txt', 'w')
-  
+
   # Initialize dictionary
   maxsize = 65536
   dict_size = 256
@@ -184,7 +220,7 @@ def uncompress( inputFile, outputFile ):
   e = []
   while(True):
     try:
-        k = getnextcode(byteIter) # this is 
+        k = getnextcode(byteIter) # this is
     except StopIteration:
         break
     kf.write(str(convertchar2num(k)) + '\n')
@@ -207,17 +243,26 @@ def uncompress( inputFile, outputFile ):
     if(dict_size > maxsize):
         dict_size = 256
         d = initializeDictionary(dict_size)
- 
+
   #print(e)
   i = 0
-  for y in range(rows):
-    for x in range(columns):
-      for c in range(channels):
-        fp = 0;
-        if(x > 0) :
-           fp = img[y,x-1,c]
-        img[y,x,c] = fp + e[i]
-        i += 1
+  if len(img_dims) > 2:
+      for y in range(rows):
+        for x in range(columns):
+          for c in range(channels):
+            fp = 0;
+            if(x > 0) :
+               fp = img[y,x-1,c]
+            img[y,x,c] = fp + e[i]
+            i += 1
+  else:
+    for y in range(rows):
+      for x in range(columns):
+          fp = 0;
+          if(x > 0) :
+             fp = img[y,x-1]
+          img[y,x] = fp + e[i]
+          i += 1
 
   endTime = time.time()
   f.close()
@@ -227,10 +272,10 @@ def uncompress( inputFile, outputFile ):
 
   sys.stderr.write( 'Uncompression time: %.2f seconds\n' % (endTime - startTime) )
 
-  
 
-  
-# The command line is 
+
+
+# The command line is
 #
 #   main.py {flag} {input image filename} {output image filename}
 #
@@ -243,7 +288,7 @@ if len(sys.argv) < 4:
   sys.exit(1)
 
 # Get input file
- 
+
 if sys.argv[2] == '-':
   inputFile = sys.stdin
 else:
