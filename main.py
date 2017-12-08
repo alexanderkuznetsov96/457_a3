@@ -66,6 +66,7 @@ def compress( inputFile, outputFile ):
   s = ''
   # For debugging
   f = open('debug_encoding.txt', 'w')
+  fd = open('debug_codes.txt', 'w')
   
   for y in range(img.shape[0]):
     for x in range(img.shape[1]):
@@ -74,21 +75,24 @@ def compress( inputFile, outputFile ):
         if(x > 0):
             fp = img[y,x-1,c]
         e = img[y,x,c] - fp
-        #f.write(str(e))
+        f.write(str(e))
         if(s + chr(e) in d):
             s += chr(e)
         else:
             #f.write(' s = ' + s + ' d[s]= ' + str(d[s]))
-            outputBytes.append(getfirstbyte(d[s]))
-            outputBytes.append(getsecondbyte(d[s]))
+            sq = convertchar2num(d[s])
+            fd.write(str(sq) + '\n')
+            outputBytes.append(getfirstbyte(sq))
+            outputBytes.append(getsecondbyte(sq))   
             d[s + chr(e)] = convertnum2char(dict_size)
             dict_size += 1
             if(dict_size > maxsize):
                 dict_size = 256
                 d = initializeDictionary(dict_size)
             s = chr(e)
-  outputBytes.append(getfirstbyte(d[s]))
-  outputBytes.append(getsecondbyte(d[s]))
+  sq = convertchar2num(d[s])
+  outputBytes.append(getfirstbyte(sq))
+  outputBytes.append(getsecondbyte(sq))    
   endTime = time.time()
   f.close()
   
@@ -170,15 +174,17 @@ def uncompress( inputFile, outputFile ):
    
   # For debugging
   f = open('debug_decoding.txt', 'w')
-  kf = open('codes.txt', 'w')
+  kf = open('output_codes.txt', 'w')
   
   # Initialize dictionary
   maxsize = 65536
   dict_size = 256
   d = initializeDictionary(dict_size)
   s = ''
-
-  while(True):
+ 
+  for y in range(rows):
+    for x in range(columns):
+      for c in range(channels):
         k = getnextcode(byteIter) # this is string
         kf.write(str(convertchar2num(k)) + '\n')
         #print(k)
@@ -188,52 +194,17 @@ def uncompress( inputFile, outputFile ):
         elif(len(s) > 0):
             d[convertnum2char(dict_size)] = s + d[k][0]
             dict_size += 1
-        for c in d[k]:
-            f.write(str(ord(c)) + '\n')
+        for q in d[k]:
+            f.write(str(ord(q)) + '\n')
+            e = ord(q)
+            fp = 0;
+            if(x > 0) :
+                fp = img[y,x-1,c]
+            img[y,x,c] = fp + e
         s = d[k]
         if(dict_size > maxsize):
             dict_size = 256
             d = initializeDictionary(dict_size)
-        #if( convertchar2num(k) > dict_size ) :
-        #  return
-        #if ( k == convertnum2char(dict_size) ) : # special case
-        #  d[convertnum2char(dict_size)] = convertchar2num(s + s[0])
-        #  dict_size += 1
-        #elif ( s != "") :
-        #  d[convertnum2char(dict_size)] = convertchar2num(s + convertnum2char(d[k])[0])
-        #  dict_size += 1
-
-        # write dictionary[k] to DF
-        #sq = str(d[k])
-        #f.write(sq + '\n')
-        #f.write(' s = ' + s + ' k=' + str(k) + ' d[k] = ' + str(d[str(k)]))
-        # S = dictionary[k]
-        #s = convertnum2char(d[k])
-        #if(dict_size > maxsize):
-        #  dict_size = 256
-        #  d = initializeDictionary(dict_size)
- 
-  # for y in range(rows):
-    # for x in range(columns):
-      # for c in range(channels):
-        # k = getnextcode(byteIter)  
-        # #f.write(str(k))
-        # if( k > dict_size ) :
-          # return
-        # if ( k == dict_size ) : # special case
-          # d[str(dict_size)] = s + s[0]
-          # dict_size += 1
-        # elif ( s != "") :
-          # d[str(dict_size)] = s + str(d[str(k)])[0]
-          # dict_size += 1
-
-        # # write dictionary[k] to DF
-        # f.write(str(d[str(k)]))
-        # # S = dictionary[k]
-        # s = str(d[str(k)])
-        # if(dict_size > maxsize):
-          # dict_size = 256
-          # d = initializeDictionary(dict_size)
         #fp = 0;
         #if(x > 0) :
         #    fp = img[y,x-1,c]
