@@ -32,6 +32,31 @@ def getfirstbyte(v) :
 def getsecondbyte(v) :
     return v & 0xFF
 
+def getprediction(img, x, y, c, isMultiChannel):
+    f10 = 0
+    #f11 = 0
+    #f01 = 0
+    if(x > 0):
+        if(isMultiChannel):
+            f10 = img[y,x-1,c]
+        else:
+            f10 = img[y,x-1]
+    #    if(y > 0):
+    #        if(isMultiChannel):
+    #            f11 = img[y-1,x-1,c]
+    #        else:
+    #            f11 = img[y-1,x-1]
+    #if(y > 0):
+    #    if(isMultiChannel):
+    #        f01 = img[y-1,x,c]
+    #    else:
+    #        f01 = img[y-1,x]
+           
+    #r = np.uint8(f10/3 + f11/3 + f01/3)
+    #r = np.uint8(f10/2 + f01/2)
+    r = f10
+    return r
+
 def compress( inputFile, outputFile ):
 
   # Read the input file into a numpy array of 8-bit values
@@ -64,61 +89,42 @@ def compress( inputFile, outputFile ):
   dict_size = 256
   d = initializeDictionary(dict_size)
   s = ''
-  # For debugging
-  f = open('debug_encoding.txt', 'w')
-  fd = open('debug_codes.txt', 'w')
 
-  if(len(img.shape) < 3):
-    for y in range(img.shape[0]):
-      for x in range(img.shape[1]):
-        fp = 0;
-        if(x > 0):
-            fp = img[y,x-1]
-        e = img[y,x] - fp
-        f.write(str(e))
+  for y in range(img.shape[0]):
+    for x in range(img.shape[1]):
+      for c in range(img.shape[2]):
+        fp = 0
+        if(len(img.shape) > 2):
+            #fp = getprediction(img,x,y,c,True)
+            if(x > 0):
+                fp = img[y,x-1,c]
+            e = img[y,x,c] - fp
+        else:
+            #fp = getprediction(img,x,y,0,False)
+            if(x > 0):
+                fp = img[y,x-1]
+            e = img[y,x] - fp
         if(s + chr(e) in d):
             s += chr(e)
         else:
-            #f.write(' s = ' + s + ' d[s]= ' + str(d[s]))
-            sq = convertchar2num(d[s])
-            fd.write(str(sq) + '\n')
-            outputBytes.append(getfirstbyte(sq))
-            outputBytes.append(getsecondbyte(sq))
+            #sq = convertchar2num(d[s])
+            sq = d[s]
+            if(len(sq) < 2):
+                sq = chr(0) + sq
+            outputBytes.append(sq[0])
+            outputBytes.append(sq[1])
             d[s + chr(e)] = convertnum2char(dict_size)
             dict_size += 1
             if(dict_size > maxsize):
                 dict_size = 256
                 d = initializeDictionary(dict_size)
             s = chr(e)
-  else:
-      for y in range(img.shape[0]):
-        for x in range(img.shape[1]):
-          for c in range(img.shape[2]):
-            fp = 0;
-            if(x > 0):
-                fp = img[y,x-1,c]
-            e = img[y,x,c] - fp
-            f.write(str(e))
-            if(s + chr(e) in d):
-                s += chr(e)
-            else:
-                #f.write(' s = ' + s + ' d[s]= ' + str(d[s]))
-                sq = convertchar2num(d[s])
-                fd.write(str(sq) + '\n')
-                outputBytes.append(getfirstbyte(sq))
-                outputBytes.append(getsecondbyte(sq))
-                d[s + chr(e)] = convertnum2char(dict_size)
-                dict_size += 1
-                if(dict_size > maxsize):
-                    dict_size = 256
-                    d = initializeDictionary(dict_size)
-                s = chr(e)
-
-  sq = convertchar2num(d[s])
-  outputBytes.append(getfirstbyte(sq))
-  outputBytes.append(getsecondbyte(sq))
+  sq = d[s]
+  if(len(sq) < 2):
+    sq = chr(0) + sq
+  outputBytes.append(sq[0])
+  outputBytes.append(sq[1])
   endTime = time.time()
-  f.close()
 
   # Output the bytes
   #
@@ -209,8 +215,8 @@ def uncompress( inputFile, outputFile ):
   byteIter = iter(inputBytes)
 
   # For debugging
-  f = open('debug_decoding.txt', 'w')
-  kf = open('output_codes.txt', 'w')
+  #f = open('debug_decoding.txt', 'w')
+  #kf = open('output_codes.txt', 'w')
 
   # Initialize dictionary
   maxsize = 65536
@@ -223,7 +229,7 @@ def uncompress( inputFile, outputFile ):
         k = getnextcode(byteIter) # this is
     except StopIteration:
         break
-    kf.write(str(convertchar2num(k)) + '\n')
+    #kf.write(str(convertchar2num(k)) + '\n')
     #print(k)
     if( convertchar2num(k) == dict_size):
         d[convertnum2char(dict_size)] = s + s[0]
@@ -233,39 +239,29 @@ def uncompress( inputFile, outputFile ):
         dict_size += 1
     for q in d[k]:
         e.append(ord(q))
-        #f.write(str(ord(q)) + '\n')
-        #e = ord(q)
-        #fp = 0;
-        #if(x > 0) :
-        #    fp = img[y,x-1,c]
-        #img[y,x,c] = fp + e
     s = d[k]
     if(dict_size > maxsize):
         dict_size = 256
         d = initializeDictionary(dict_size)
 
-  #print(e)
   i = 0
-  if len(img_dims) > 2:
-      for y in range(rows):
-        for x in range(columns):
-          for c in range(channels):
-            fp = 0;
-            if(x > 0) :
-               fp = img[y,x-1,c]
+  for y in range(rows):
+    for x in range(columns):
+      for c in range(channels):
+        fp = 0
+        if(len(img_dims) > 2):
+            #fp = getprediction(img,x,y,c,True)
+            if(x > 0):
+                fp = img[y,x-1,c]
             img[y,x,c] = fp + e[i]
-            i += 1
-  else:
-    for y in range(rows):
-      for x in range(columns):
-          fp = 0;
-          if(x > 0) :
-             fp = img[y,x-1]
-          img[y,x] = fp + e[i]
-          i += 1
+        else:
+            #fp = getprediction(img,x,y,0,False)
+            if(x > 0):
+                fp = img[y,x-1]
+            img[y,x] = fp + e[i]
+        i += 1
 
   endTime = time.time()
-  f.close()
   # Output the image
 
   netpbm.imsave( outputFile, img )
