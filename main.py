@@ -88,6 +88,7 @@ def compress( inputFile, outputFile ):
   maxsize = 65536
   dict_size = 256
   d = initializeDictionary(dict_size)
+  
   s = ''
   img_dimensions = len(img.shape)
   if(img_dimensions > 2):
@@ -101,19 +102,16 @@ def compress( inputFile, outputFile ):
       for c in range(channels):
         fp = 0
         if(one_channel_flag):
-            #fp = getprediction(img,x,y,c,True)
             if(x > 0):
                 fp = img[y,x-1]
             e = img[y,x] - fp
         else:
-            #fp = getprediction(img,x,y,0,False)
             if(x > 0):
                 fp = img[y,x-1,c]
             e = img[y,x,c] - fp
         if(s + chr(e) in d):
             s += chr(e)
         else:
-            #sq = convertchar2num(d[s])
             sq = d[s]
             if(len(sq) < 2):
                 sq = chr(0) + sq
@@ -224,10 +222,6 @@ def uncompress( inputFile, outputFile ):
       img = np.empty([rows, columns], dtype=np.uint8)
   byteIter = iter(inputBytes)
 
-  # For debugging
-  #f = open('debug_decoding.txt', 'w')
-  #kf = open('output_codes.txt', 'w')
-
   # Initialize dictionary
   maxsize = 65536
   dict_size = 256
@@ -255,19 +249,15 @@ def uncompress( inputFile, outputFile ):
         d = initializeDictionary(dict_size)
 
   i = 0
-
-
   for y in range(rows):
     for x in range(columns):
       for c in range(channels):
         fp = 0
         if one_channel_flag:
-            #fp = getprediction(img,x,y,c,True)
             if(x > 0):
                 fp = img[y,x-1]
             img[y,x] = fp + e[i]
         else:
-            #fp = getprediction(img,x,y,0,False)
             if(x > 0):
                 fp = img[y,x-1,c]
             img[y,x,c] = fp + e[i]
