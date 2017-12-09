@@ -32,31 +32,6 @@ def getfirstbyte(v) :
 def getsecondbyte(v) :
     return v & 0xFF
 
-def getprediction(img, x, y, c, isMultiChannel):
-    f10 = 0
-    #f11 = 0
-    #f01 = 0
-    if(x > 0):
-        if(isMultiChannel):
-            f10 = img[y,x-1,c]
-        else:
-            f10 = img[y,x-1]
-    #    if(y > 0):
-    #        if(isMultiChannel):
-    #            f11 = img[y-1,x-1,c]
-    #        else:
-    #            f11 = img[y-1,x-1]
-    #if(y > 0):
-    #    if(isMultiChannel):
-    #        f01 = img[y-1,x,c]
-    #    else:
-    #        f01 = img[y-1,x]
-
-    #r = np.uint8(f10/3 + f11/3 + f01/3)
-    #r = np.uint8(f10/2 + f01/2)
-    r = f10
-    return r
-
 def compress( inputFile, outputFile ):
 
   # Read the input file into a numpy array of 8-bit values
@@ -162,7 +137,6 @@ def compress( inputFile, outputFile ):
 def getnextcode( byteIter ) :
     fb = byteIter.next()
     sb = byteIter.next()
-    #return (int(fb) << 8) | sb
     if(fb != 0):
         return chr(fb) + chr(sb)
     return chr(sb)
@@ -233,8 +207,6 @@ def uncompress( inputFile, outputFile ):
         k = getnextcode(byteIter) # this is
     except StopIteration:
         break
-    #kf.write(str(convertchar2num(k)) + '\n')
-    #print(k)
     if( convertchar2num(k) == dict_size):
         d[convertnum2char(dict_size)] = s + s[0]
         dict_size += 1
